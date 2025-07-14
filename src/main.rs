@@ -13,7 +13,10 @@ fn spawn_camera(mut comms: Commands) {
     comms.spawn(Camera2d);
 }
 
-fn on_menu_event(mut events: EventReader<MainMenuEvent>, mut exit_events: EventWriter<AppExit>) {
+fn on_menu_event(
+    mut events: EventReader<MainMenuEvent<u32>>,
+    mut exit_events: EventWriter<AppExit>,
+) {
     for eve in events.read() {
         let data = eve.data;
         info!("Main menu event received, data {data}");
@@ -35,11 +38,11 @@ fn main() {
                     action: MainMenuAction::SubMenu(vec![
                         MainMenuItem {
                             label: "New game".to_string(),
-                            action: MainMenuAction::SendEvent(1),
+                            action: MainMenuAction::SendEvent(1u32),
                         },
                         MainMenuItem {
                             label: "Load game...".to_string(),
-                            action: MainMenuAction::SendEvent(2),
+                            action: MainMenuAction::SendEvent(2u32),
                         },
                         MainMenuItem {
                             label: "Go back...".to_string(),
@@ -49,17 +52,17 @@ fn main() {
                 },
                 MainMenuItem {
                     label: "Settings".to_string(),
-                    action: MainMenuAction::SendEvent(3),
+                    action: MainMenuAction::SendEvent(3u32),
                 },
                 MainMenuItem {
                     label: "Quit".to_string(),
-                    action: MainMenuAction::SendEvent(4),
+                    action: MainMenuAction::SendEvent(4u32),
                 },
             ]),
         })
         .init_state::<AppState>()
         .add_systems(Startup, spawn_camera)
-        .add_systems(Update, on_menu_event.run_if(on_event::<MainMenuEvent>))
+        .add_systems(Update, on_menu_event.run_if(on_event::<MainMenuEvent<u32>>))
         .insert_resource(ClearColor(VIOLET.into()))
         .run();
 }

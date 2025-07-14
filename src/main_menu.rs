@@ -4,37 +4,50 @@ use bevy::color::palettes::css::*;
 use bevy::ecs::relationship::RelatedSpawnerCommands;
 use bevy::prelude::*;
 
-pub type MainMenuEventData = u32;
-
 #[derive(Event)]
-pub struct MainMenuEvent {
-    pub data: MainMenuEventData,
+pub struct MainMenuEvent<D>
+where
+    D: Sync + Clone + 'static + Send,
+{
+    pub data: D,
 }
 
 #[derive(Resource, Clone)]
-pub enum MainMenuAction {
-    SubMenu(Vec<MainMenuItem>),
-    SendEvent(MainMenuEventData),
+pub enum MainMenuAction<D>
+where
+    D: Send + Sync + Clone + 'static,
+{
+    SubMenu(Vec<MainMenuItem<D>>),
+    SendEvent(D),
     GoBack,
 }
 
 #[derive(Resource, Clone)]
-pub struct MainMenuItem {
+pub struct MainMenuItem<D>
+where
+    D: Send + Sync + Clone + 'static,
+{
     pub label: String,
-    pub action: MainMenuAction,
+    pub action: MainMenuAction<D>,
 }
 
 #[derive(Resource, Clone)]
-pub struct MainMenu(pub Vec<MainMenuItem>);
+pub struct MainMenu<D: Send + Sync + Clone + 'static>(pub Vec<MainMenuItem<D>>);
 
 #[derive(Clone)]
-struct MenuState {
-    current_menu: Vec<MainMenuItem>,
+struct MenuState<D>
+where
+    D: Send + Sync + Clone + 'static,
+{
+    current_menu: Vec<MainMenuItem<D>>,
 }
 
 #[derive(Resource, Clone)]
-struct MenuStateResource {
-    state_stack: Vec<MenuState>,
+struct MenuStateResource<D>
+where
+    D: Send + Sync + Clone + 'static,
+{
+    state_stack: Vec<MenuState<D>>,
     current_state_idx: usize,
 }
 
@@ -96,9 +109,12 @@ fn change_color_on_hover(
     }
 }
 
-pub struct MainMenuPlugin<S: States> {
+pub struct MainMenuPlugin<S: States, D>
+where
+    D: Send + Sync + Clone + 'static,
+{
     pub menu_state: S,
-    pub menu: MainMenu,
+    pub menu: MainMenu<D>,
 }
 
 fn load_assets(fonts: Res<AssetServer>, mut assets: ResMut<MenuAssets>) {
@@ -173,17 +189,21 @@ fn grid_center_layout(
 }
 
 #[derive(Event)]
-enum InternalMenuEvent {
+enum InternalMenuEvent<D>
+where
+    D: Send + Sync + Clone + 'static,
+{
     GoBack,
-    OpenMenu(Vec<MainMenuItem>),
+    OpenMenu(Vec<MainMenuItem<D>>),
 }
 
-fn mouseclick_observer(
-    item_action: MainMenuAction,
-) -> impl Fn(Trigger<Pointer<Click>>, EventWriter<MainMenuEvent>, EventWriter<InternalMenuEvent>) {
+fn mouseclick_observer<D: Sync + Clone + 'static + Send>(
+    item_action: MainMenuAction<D>,
+) -> impl Fn(Trigger<Pointer<Click>>, EventWriter<MainMenuEvent<D>>, EventWriter<InternalMenuEvent<D>>)
+{
     move |_trigger, mut event_sender, mut internal_sender| match item_action {
-        MainMenuAction::SendEvent(d) => {
-            event_sender.write(MainMenuEvent { data: d });
+        MainMenuAction::SendEvent(ref d) => {
+            event_sender.write(MainMenuEvent { data: d.clone() });
         }
         MainMenuAction::SubMenu(ref items) => {
             internal_sender.write(InternalMenuEvent::OpenMenu(items.clone()));
@@ -194,9 +214,9 @@ fn mouseclick_observer(
     }
 }
 
-fn on_internal_menu_event(
-    mut menu_state: ResMut<MenuStateResource>,
-    mut internal_event: EventReader<InternalMenuEvent>,
+fn on_internal_menu_event<D: Sync + Clone + 'static + Send>(
+    mut menu_state: ResMut<MenuStateResource<D>>,
+    mut internal_event: EventReader<InternalMenuEvent<D>>,
 ) {
     for event in internal_event.read() {
         match event {
@@ -214,10 +234,10 @@ fn on_internal_menu_event(
     }
 }
 
-fn rebuild_menu(
+fn rebuild_menu<D: Sync + Clone + 'static + Send>(
     mut command: Commands,
     assets: Res<MenuAssets>,
-    menu_state: Res<MenuStateResource>,
+    menu_state: Res<MenuStateResource<D>>,
     old_menu_root: Query<Entity, With<MenuRoot>>,
 ) {
     let mut old_menu_despawned = false;
@@ -230,7 +250,11 @@ fn rebuild_menu(
     }
 }
 
-fn init_menu(command: Commands, assets: Res<MenuAssets>, menu_data: Res<MenuStateResource>) {
+fn init_menu<D: Sync + Clone + 'static + Send>(
+    command: Commands,
+    assets: Res<MenuAssets>,
+    menu_data: Res<MenuStateResource<D>>,
+) {
     let my_font = assets.font.clone();
     grid_center_layout(command, MenuRoot, |parent| {
         let modifier = NodeModifier::new().set_grid_column(GridPlacement::start_span(2, 1));
@@ -252,7 +276,7 @@ fn init_menu(command: Commands, assets: Res<MenuAssets>, menu_data: Res<MenuStat
     });
 }
 
-impl<S: States> Plugin for MainMenuPlugin<S> {
+impl<D: Sync + Clone + Send, S: States> Plugin for MainMenuPlugin<S, D> {
     fn build(&self, app: &mut App) {
         let starting_menu_state = MenuStateResource {
             state_stack: vec![MenuState {
@@ -263,20 +287,20 @@ impl<S: States> Plugin for MainMenuPlugin<S> {
         app.add_systems(OnEnter(self.menu_state.clone()), load_assets)
             .add_systems(
                 OnEnter(self.menu_state.clone()),
-                init_menu.after(load_assets),
+                init_menu::<D>.after(load_assets),
             )
             .add_systems(
                 Update,
-                rebuild_menu
+                rebuild_menu::<D>
                     .run_if(in_state(self.menu_state.clone()))
-                    .run_if(resource_exists_and_changed::<MenuStateResource>),
+                    .run_if(resource_exists_and_changed::<MenuStateResource<D>>),
             )
             .add_systems(
                 Update,
-                on_internal_menu_event
+                on_internal_menu_event::<D>
                     .run_if(in_state(self.menu_state.clone()))
-                    .run_if(on_event::<InternalMenuEvent>)
-                    .before(rebuild_menu),
+                    .run_if(on_event::<InternalMenuEvent<D>>)
+                    .before(rebuild_menu::<D>),
             )
             .add_systems(
                 Update,
@@ -284,8 +308,8 @@ impl<S: States> Plugin for MainMenuPlugin<S> {
             )
             // .add_systems(Startup, spawn_text)
             .init_resource::<MenuAssets>()
-            .add_event::<InternalMenuEvent>()
-            .add_event::<MainMenuEvent>()
+            .add_event::<InternalMenuEvent<D>>()
+            .add_event::<MainMenuEvent<D>>()
             .insert_resource(starting_menu_state)
             .insert_resource(self.menu.clone());
     }
