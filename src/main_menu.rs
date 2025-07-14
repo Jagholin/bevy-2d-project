@@ -39,7 +39,7 @@ where
 pub struct MainMenu<D: Send + Sync + Clone + 'static>(pub Vec<MainMenuItem<D>>);
 
 mod internal {
-    use super::{MainMenu, MainMenuAction, MainMenuEvent, MainMenuItem};
+    use super::{MainMenuAction, MainMenuEvent, MainMenuItem};
     use std::path::Path;
 
     use bevy::color::palettes::css::*;
@@ -203,10 +203,11 @@ mod internal {
         OpenMenu(Vec<MainMenuItem<D>>),
     }
 
+    type MainMenuEventWriter<'a, D> = EventWriter<'a, MainMenuEvent<D>>;
+    type InternalMenuEventWriter<'a, D> = EventWriter<'a, InternalMenuEvent<D>>;
     fn mouseclick_observer<D: Sync + Clone + 'static + Send>(
         item_action: MainMenuAction<D>,
-    ) -> impl Fn(Trigger<Pointer<Click>>, EventWriter<MainMenuEvent<D>>, EventWriter<InternalMenuEvent<D>>)
-    {
+    ) -> impl Fn(Trigger<Pointer<Click>>, MainMenuEventWriter<D>, InternalMenuEventWriter<D>) {
         move |_trigger, mut event_sender, mut internal_sender| match item_action {
             MainMenuAction::SendEvent(ref d) => {
                 event_sender.write(MainMenuEvent { data: d.clone() });
