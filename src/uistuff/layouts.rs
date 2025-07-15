@@ -6,6 +6,7 @@ use bevy::{ecs::relationship::RelatedSpawnerCommands, prelude::*};
 pub struct NodeModifier {
     pub grid_column: Option<GridPlacement>,
     pub grid_row: Option<GridPlacement>,
+    pub is_root: bool,
 }
 
 impl NodeModifier {
@@ -22,6 +23,12 @@ impl NodeModifier {
         self.grid_row = Some(pl);
         self
     }
+    pub fn root() -> Self {
+        NodeModifier {
+            is_root: true,
+            ..Default::default()
+        }
+    }
     pub fn modify(&self, n: Node) -> Node {
         let mut new_node = Node { ..n };
         if let Some(val) = self.grid_column {
@@ -29,6 +36,10 @@ impl NodeModifier {
         }
         if let Some(val) = self.grid_row {
             new_node.grid_row = val;
+        }
+        if self.is_root {
+            new_node.min_width = Val::Vw(100.0);
+            new_node.min_height = Val::Vh(100.0);
         }
         new_node
     }
@@ -69,17 +80,37 @@ pub fn button_box(
     (result, ChangeColorOnHover::from(style), Button)
 }
 
-pub fn grid_center_layout(
-    mut command: Commands,
+pub fn vertically_centered(
+    mut command: impl GenericSpawner,
     extra_components: impl Bundle,
+    node_modifier: NodeModifier,
     func: impl FnOnce(&mut RelatedSpawnerCommands<ChildOf>),
 ) {
     command
-        .spawn((
-            Node {
+        .generic_spawn((
+            extra_components,
+            node_modifier.modify(Node {
+                display: Display::Flex,
+                align_items: AlignItems::Center,
+                // justify_content: JustifyContent::Center,
+                flex_direction: FlexDirection::Row,
+                ..Default::default()
+            }),
+        ))
+        .with_children(func);
+}
+
+pub fn grid_hor_center_layout(
+    mut command: impl GenericSpawner,
+    extra_components: impl Bundle,
+    node_modifier: NodeModifier,
+    func: impl FnOnce(&mut RelatedSpawnerCommands<ChildOf>),
+) {
+    command
+        .generic_spawn((
+            node_modifier.modify(Node {
                 display: Display::Grid,
-                min_height: Val::Vh(100.0),
-                min_width: Val::Vw(100.0),
+                min_width: Val::Percent(100.0),
                 grid_auto_rows: vec![GridTrack::min_content()],
                 grid_template_columns: vec![
                     RepeatedGridTrack::fr(1, 1.0),
@@ -87,7 +118,7 @@ pub fn grid_center_layout(
                     RepeatedGridTrack::fr(1, 1.0),
                 ],
                 ..Default::default()
-            },
+            }),
             extra_components,
         ))
         .with_children(func);

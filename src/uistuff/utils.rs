@@ -1,5 +1,36 @@
 use crate::uistuff::config::*;
-use bevy::prelude::*;
+use bevy::{
+    ecs::relationship::{RelatedSpawnerCommands, Relationship},
+    prelude::*,
+};
+
+pub trait GenericSpawner {
+    fn generic_spawn(&mut self, bundle: impl Bundle) -> EntityCommands<'_>;
+}
+
+impl<'w, 's> GenericSpawner for Commands<'w, 's> {
+    fn generic_spawn(&mut self, bundle: impl Bundle) -> EntityCommands<'_> {
+        self.spawn(bundle)
+    }
+}
+
+impl<'w, R: Relationship> GenericSpawner for RelatedSpawnerCommands<'w, R> {
+    fn generic_spawn(&mut self, bundle: impl Bundle) -> EntityCommands<'_> {
+        self.spawn(bundle)
+    }
+}
+
+impl<'w, 's> GenericSpawner for &mut Commands<'w, 's> {
+    fn generic_spawn(&mut self, bundle: impl Bundle) -> EntityCommands<'_> {
+        self.spawn(bundle)
+    }
+}
+
+impl<'w, R: Relationship> GenericSpawner for &mut RelatedSpawnerCommands<'w, R> {
+    fn generic_spawn(&mut self, bundle: impl Bundle) -> EntityCommands<'_> {
+        self.spawn(bundle)
+    }
+}
 
 #[derive(Component, Debug)]
 #[require(Interaction)]

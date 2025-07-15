@@ -148,24 +148,26 @@ mod internal {
         ui_style: Res<UiStyle>,
     ) {
         let my_font = assets.font.clone();
-        grid_center_layout(command, MenuRoot, |parent| {
-            let modifier = NodeModifier::new().set_grid_column(GridPlacement::start_span(2, 1));
-            let current_menu = menu_data
-                .state_stack
-                .get(menu_data.current_state_idx)
-                .expect("The state index should point to existing state");
-            for (item, idx) in current_menu.current_menu.iter().zip(1..) {
-                parent
-                    .spawn(button_box(
-                        item.label.as_str(),
-                        my_font.clone(),
-                        modifier
-                            .clone()
-                            .set_grid_row(GridPlacement::start_span(idx, 1)),
-                        ui_style.button_style,
-                    ))
-                    .observe(mouseclick_observer(item.action.clone()));
-            }
+        vertically_centered(command, MenuRoot, NodeModifier::root(), |parent| {
+            grid_hor_center_layout(parent, (), NodeModifier::new(), |parent| {
+                let modifier = NodeModifier::new().set_grid_column(GridPlacement::start_span(2, 1));
+                let current_menu = menu_data
+                    .state_stack
+                    .get(menu_data.current_state_idx)
+                    .expect("The state index should point to existing state");
+                for (item, idx) in current_menu.current_menu.iter().zip(1..) {
+                    parent
+                        .spawn(button_box(
+                            item.label.as_str(),
+                            my_font.clone(),
+                            modifier
+                                .clone()
+                                .set_grid_row(GridPlacement::start_span(idx, 1)),
+                            ui_style.button_style,
+                        ))
+                        .observe(mouseclick_observer(item.action.clone()));
+                }
+            });
         });
     }
 
