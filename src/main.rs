@@ -1,4 +1,5 @@
-use bevy::{color::palettes::css::*, prelude::*};
+use bevy::prelude::*;
+use uistuff::config::STANDARD_STYLE;
 use uistuff::main_menu::{MainMenu, MainMenuAction, MainMenuEvent, MainMenuItem, MainMenuPlugin};
 use uistuff::utils::UiUtilsPlugin;
 mod uistuff;
@@ -65,6 +66,7 @@ fn main() {
         .init_state::<AppState>()
         .add_systems(Startup, spawn_camera)
         .add_systems(Update, on_menu_event.run_if(on_event::<MainMenuEvent<u32>>))
-        .insert_resource(ClearColor(VIOLET.into()))
+        .insert_resource(ClearColor(STANDARD_STYLE.back_color))
+        .insert_resource(STANDARD_STYLE)
         .run();
 }

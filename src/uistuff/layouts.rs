@@ -1,5 +1,6 @@
+use crate::uistuff::config::*;
 use crate::uistuff::utils::*;
-use bevy::{color::palettes::css::*, ecs::relationship::RelatedSpawnerCommands, prelude::*};
+use bevy::{ecs::relationship::RelatedSpawnerCommands, prelude::*};
 
 #[derive(Clone, Default, Debug)]
 pub struct NodeModifier {
@@ -37,6 +38,7 @@ pub fn text_box(
     text: impl Into<String>,
     font: Handle<Font>,
     node_modifier: NodeModifier,
+    style: BackgroundForeground,
 ) -> impl Bundle {
     (
         node_modifier.modify(Node {
@@ -44,10 +46,10 @@ pub fn text_box(
             padding: UiRect::axes(Val::Auto, Val::Px(5.0)),
             ..Default::default()
         }),
-        BackgroundColor(PINK.into()),
+        BackgroundColor(style.back_color),
         children![(
             Text::new(text),
-            TextColor(WHITE.into()),
+            TextColor(style.fore_color),
             TextFont {
                 font,
                 font_size: 32.0,
@@ -61,16 +63,10 @@ pub fn button_box(
     text: impl Into<String>,
     font: Handle<Font>,
     node_modifier: NodeModifier,
+    style: ButtonStyle,
 ) -> impl Bundle {
-    let result = text_box(text, font, node_modifier);
-    (
-        result,
-        ChangeColorOnHover {
-            normal_color: PINK.into(),
-            hover_color: LIGHT_CORAL.into(),
-        },
-        Button,
-    )
+    let result = text_box(text, font, node_modifier, style.normal_colors);
+    (result, ChangeColorOnHover::from(style), Button)
 }
 
 pub fn grid_center_layout(

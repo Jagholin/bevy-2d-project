@@ -40,7 +40,7 @@ pub struct MainMenu<D: Send + Sync + Clone + 'static>(pub Vec<MainMenuItem<D>>);
 
 mod internal {
     use super::{MainMenuAction, MainMenuEvent, MainMenuItem};
-    use crate::uistuff::layouts::*;
+    use crate::uistuff::{config::UiStyle, layouts::*};
     use std::path::Path;
 
     use bevy::prelude::*;
@@ -129,6 +129,7 @@ mod internal {
         assets: Res<MenuAssets>,
         menu_state: Res<MenuStateResource<D>>,
         old_menu_root: Query<Entity, With<MenuRoot>>,
+        ui_style: Res<UiStyle>,
     ) {
         let mut old_menu_despawned = false;
         for e in old_menu_root {
@@ -136,7 +137,7 @@ mod internal {
             old_menu_despawned = true;
         }
         if old_menu_despawned {
-            init_menu(command, assets, menu_state);
+            init_menu(command, assets, menu_state, ui_style);
         }
     }
 
@@ -144,6 +145,7 @@ mod internal {
         command: Commands,
         assets: Res<MenuAssets>,
         menu_data: Res<MenuStateResource<D>>,
+        ui_style: Res<UiStyle>,
     ) {
         let my_font = assets.font.clone();
         grid_center_layout(command, MenuRoot, |parent| {
@@ -160,6 +162,7 @@ mod internal {
                         modifier
                             .clone()
                             .set_grid_row(GridPlacement::start_span(idx, 1)),
+                        ui_style.button_style,
                     ))
                     .observe(mouseclick_observer(item.action.clone()));
             }
