@@ -1,6 +1,7 @@
 use bevy::{color::palettes::css::*, prelude::*};
-use main_menu::{MainMenu, MainMenuAction, MainMenuEvent, MainMenuItem};
-mod main_menu;
+use uistuff::main_menu::{MainMenu, MainMenuAction, MainMenuEvent, MainMenuItem, MainMenuPlugin};
+use uistuff::utils::UiUtilsPlugin;
+mod uistuff;
 
 #[derive(States, Clone, Eq, PartialEq, Hash, Debug, Default)]
 enum AppState {
@@ -30,7 +31,8 @@ fn on_menu_event(
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
-        .add_plugins(main_menu::MainMenuPlugin {
+        .add_plugins(UiUtilsPlugin)
+        .add_plugins(MainMenuPlugin {
             menu_state: AppState::MainMenu,
             menu: MainMenu(vec![
                 MainMenuItem {

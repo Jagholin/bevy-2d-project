@@ -40,10 +40,9 @@ pub struct MainMenu<D: Send + Sync + Clone + 'static>(pub Vec<MainMenuItem<D>>);
 
 mod internal {
     use super::{MainMenuAction, MainMenuEvent, MainMenuItem};
+    use crate::uistuff::layouts::*;
     use std::path::Path;
 
-    use bevy::color::palettes::css::*;
-    use bevy::ecs::relationship::RelatedSpawnerCommands;
     use bevy::prelude::*;
 
     #[derive(Clone)]
@@ -66,132 +65,16 @@ mod internal {
     #[derive(Component)]
     struct MenuRoot;
 
-    #[derive(Clone, Default, Debug)]
-    struct NodeModifier {
-        grid_column: Option<GridPlacement>,
-        grid_row: Option<GridPlacement>,
-    }
-
-    impl NodeModifier {
-        fn new() -> Self {
-            NodeModifier {
-                ..Default::default()
-            }
-        }
-        fn set_grid_column(mut self, pl: GridPlacement) -> Self {
-            self.grid_column = Some(pl);
-            self
-        }
-        fn set_grid_row(mut self, pl: GridPlacement) -> Self {
-            self.grid_row = Some(pl);
-            self
-        }
-        fn modify(&self, n: Node) -> Node {
-            let mut new_node = Node { ..n };
-            if let Some(val) = self.grid_column {
-                new_node.grid_column = val;
-            }
-            if let Some(val) = self.grid_row {
-                new_node.grid_row = val;
-            }
-            new_node
-        }
-    }
-
     #[derive(Resource, Default)]
     struct MenuAssets {
         font: Handle<Font>,
     }
 
-    #[derive(Component, Debug)]
-    struct ChangeColorOnHover {
-        normal_color: Color,
-        hover_color: Color,
-    }
-
-    fn change_color_on_hover(
-        backgr: Query<
-            (&ChangeColorOnHover, &mut BackgroundColor, &Interaction),
-            Changed<Interaction>,
-        >,
-    ) {
-        for (colors, mut col, int) in backgr {
-            match int {
-                Interaction::Hovered => col.0 = colors.hover_color,
-                Interaction::None => col.0 = colors.normal_color,
-                _ => (),
-            }
-        }
-    }
     fn load_assets(fonts: Res<AssetServer>, mut assets: ResMut<MenuAssets>) {
         info!("loading assets..");
         let gamefont = fonts.load::<Font>(Path::new("fonts/Beholden-Medium.ttf"));
         info!("Font handle in load_assets is {gamefont:?}");
         assets.font = gamefont;
-    }
-
-    fn text_box(
-        text: impl Into<String>,
-        font: Handle<Font>,
-        node_modifier: NodeModifier,
-    ) -> impl Bundle {
-        (
-            node_modifier.modify(Node {
-                border: UiRect::all(Val::Px(2.0)),
-                padding: UiRect::axes(Val::Auto, Val::Px(5.0)),
-                ..Default::default()
-            }),
-            BackgroundColor(PINK.into()),
-            children![(
-                Text::new(text),
-                TextColor(WHITE.into()),
-                TextFont {
-                    font,
-                    font_size: 32.0,
-                    ..Default::default()
-                }
-            )],
-        )
-    }
-
-    fn button_box(
-        text: impl Into<String>,
-        font: Handle<Font>,
-        node_modifier: NodeModifier,
-    ) -> impl Bundle {
-        let result = text_box(text, font, node_modifier);
-        (
-            result,
-            ChangeColorOnHover {
-                normal_color: PINK.into(),
-                hover_color: LIGHT_CORAL.into(),
-            },
-            Button,
-        )
-    }
-
-    fn grid_center_layout(
-        mut command: Commands,
-        extra_components: impl Bundle,
-        func: impl FnOnce(&mut RelatedSpawnerCommands<ChildOf>),
-    ) {
-        command
-            .spawn((
-                Node {
-                    display: Display::Grid,
-                    min_height: Val::Vh(100.0),
-                    min_width: Val::Vw(100.0),
-                    grid_auto_rows: vec![GridTrack::min_content()],
-                    grid_template_columns: vec![
-                        RepeatedGridTrack::fr(1, 1.0),
-                        RepeatedGridTrack::auto(1),
-                        RepeatedGridTrack::fr(1, 1.0),
-                    ],
-                    ..Default::default()
-                },
-                extra_components,
-            ))
-            .with_children(func);
     }
 
     #[derive(Event)]
@@ -308,10 +191,6 @@ mod internal {
                         .run_if(in_state(self.menu_state.clone()))
                         .run_if(on_event::<InternalMenuEvent<D>>)
                         .before(rebuild_menu::<D>),
-                )
-                .add_systems(
-                    Update,
-                    change_color_on_hover.run_if(in_state(self.menu_state.clone())),
                 )
                 // .add_systems(Startup, spawn_text)
                 .init_resource::<MenuAssets>()
