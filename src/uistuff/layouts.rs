@@ -7,6 +7,8 @@ pub struct NodeModifier {
     pub grid_column: Option<GridPlacement>,
     pub grid_row: Option<GridPlacement>,
     pub is_root: bool,
+    pub force_absolute_position: bool,
+    pub is_hidden: bool,
 }
 
 impl NodeModifier {
@@ -29,6 +31,14 @@ impl NodeModifier {
             ..Default::default()
         }
     }
+    pub fn force_absolute_pos(mut self) -> Self {
+        self.force_absolute_position = true;
+        self
+    }
+    pub fn spawn_hidden(mut self) -> Self {
+        self.is_hidden = true;
+        self
+    }
     pub fn modify(&self, n: Node) -> Node {
         let mut new_node = Node { ..n };
         if let Some(val) = self.grid_column {
@@ -40,6 +50,12 @@ impl NodeModifier {
         if self.is_root {
             new_node.min_width = Val::Vw(100.0);
             new_node.min_height = Val::Vh(100.0);
+        }
+        if self.force_absolute_position {
+            new_node.position_type = PositionType::Absolute;
+        }
+        if self.is_hidden {
+            new_node.display = Display::None;
         }
         new_node
     }
@@ -85,7 +101,7 @@ pub fn vertically_centered(
     extra_components: impl Bundle,
     node_modifier: NodeModifier,
     func: impl FnOnce(&mut RelatedSpawnerCommands<ChildOf>),
-) {
+) -> Entity {
     command
         .generic_spawn((
             extra_components,
@@ -97,15 +113,17 @@ pub fn vertically_centered(
                 ..Default::default()
             }),
         ))
-        .with_children(func);
+        .with_children(func)
+        .id()
 }
 
 pub fn grid_hor_center_layout(
     mut command: impl GenericSpawner,
     extra_components: impl Bundle,
     node_modifier: NodeModifier,
-    func: impl FnOnce(&mut RelatedSpawnerCommands<ChildOf>),
-) {
+    central_columns: u16,
+    child_spawner: impl FnOnce(&mut RelatedSpawnerCommands<ChildOf>),
+) -> Entity {
     command
         .generic_spawn((
             node_modifier.modify(Node {
@@ -114,12 +132,13 @@ pub fn grid_hor_center_layout(
                 grid_auto_rows: vec![GridTrack::min_content()],
                 grid_template_columns: vec![
                     RepeatedGridTrack::fr(1, 1.0),
-                    RepeatedGridTrack::auto(1),
+                    RepeatedGridTrack::auto(central_columns),
                     RepeatedGridTrack::fr(1, 1.0),
                 ],
                 ..Default::default()
             }),
             extra_components,
         ))
-        .with_children(func);
+        .with_children(child_spawner)
+        .id()
 }

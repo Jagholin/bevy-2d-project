@@ -40,8 +40,7 @@ pub struct MainMenu<D: Send + Sync + Clone + 'static>(pub Vec<MainMenuItem<D>>);
 
 mod internal {
     use super::{MainMenuAction, MainMenuEvent, MainMenuItem};
-    use crate::uistuff::{config::UiStyle, layouts::*};
-    use std::path::Path;
+    use crate::uistuff::{config::UiStyle, layouts::*, utils::UIAssets};
 
     use bevy::prelude::*;
 
@@ -64,18 +63,6 @@ mod internal {
 
     #[derive(Component)]
     struct MenuRoot;
-
-    #[derive(Resource, Default)]
-    struct MenuAssets {
-        font: Handle<Font>,
-    }
-
-    fn load_assets(fonts: Res<AssetServer>, mut assets: ResMut<MenuAssets>) {
-        info!("loading assets..");
-        let gamefont = fonts.load::<Font>(Path::new("fonts/Beholden-Medium.ttf"));
-        info!("Font handle in load_assets is {gamefont:?}");
-        assets.font = gamefont;
-    }
 
     #[derive(Event)]
     enum InternalMenuEvent<D>
@@ -126,7 +113,7 @@ mod internal {
 
     fn rebuild_menu<D: Sync + Clone + 'static + Send>(
         mut command: Commands,
-        assets: Res<MenuAssets>,
+        assets: Res<UIAssets>,
         menu_state: Res<MenuStateResource<D>>,
         old_menu_root: Query<Entity, With<MenuRoot>>,
         ui_style: Res<UiStyle>,
@@ -143,13 +130,13 @@ mod internal {
 
     fn init_menu<D: Sync + Clone + 'static + Send>(
         command: Commands,
-        assets: Res<MenuAssets>,
+        assets: Res<UIAssets>,
         menu_data: Res<MenuStateResource<D>>,
         ui_style: Res<UiStyle>,
     ) {
         let my_font = assets.font.clone();
         vertically_centered(command, MenuRoot, NodeModifier::root(), |parent| {
-            grid_hor_center_layout(parent, (), NodeModifier::new(), |parent| {
+            grid_hor_center_layout(parent, (), NodeModifier::new(), 1, |parent| {
                 let modifier = NodeModifier::new().set_grid_column(GridPlacement::start_span(2, 1));
                 let current_menu = menu_data
                     .state_stack
@@ -159,7 +146,9 @@ mod internal {
                     parent
                         .spawn(button_box(
                             item.label.as_str(),
-                            my_font.clone(),
+                            my_font
+                                .clone()
+                                .expect("The load fonts system didn't run before init_menu"),
                             modifier
                                 .clone()
                                 .set_grid_row(GridPlacement::start_span(idx, 1)),
@@ -179,11 +168,7 @@ mod internal {
                 }],
                 current_state_idx: 0,
             };
-            app.add_systems(OnEnter(self.menu_state.clone()), load_assets)
-                .add_systems(
-                    OnEnter(self.menu_state.clone()),
-                    init_menu::<D>.after(load_assets),
-                )
+            app.add_systems(OnEnter(self.menu_state.clone()), init_menu::<D>)
                 .add_systems(
                     Update,
                     rebuild_menu::<D>
@@ -198,7 +183,6 @@ mod internal {
                         .before(rebuild_menu::<D>),
                 )
                 // .add_systems(Startup, spawn_text)
-                .init_resource::<MenuAssets>()
                 .add_event::<InternalMenuEvent<D>>()
                 .add_event::<MainMenuEvent<D>>()
                 .insert_resource(starting_menu_state)
